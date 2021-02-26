@@ -63,15 +63,10 @@ struct FirstView: View {
 
   var body: some View {
     VStack {
-      if let _ = appState.selectedZone {
-        NavigationLink(destination: SecondView(), isActive: .constant(true)) {
-          EmptyView()
-        }
-      }
       NavigationLink(destination: SecondView(), tag: .showSecondView, selection: $appState.firstViewNavigationState) {
         EmptyView()
       }
-      NavigationLink(destination: ThirdView(), tag: .showThirdView, selection: $appState.firstViewNavigationState) {
+      NavigationLink(destination: ThirdView("0"), tag: .showThirdView, selection: $appState.firstViewNavigationState) {
         EmptyView()
       }
       Text("First View")
@@ -96,18 +91,54 @@ extension FirstView {
 struct SecondView: View {
 
   @EnvironmentObject var appState: AppState
+  private var selectedCell: Cell?
+
+  struct Cell: Identifiable {
+    let id: String
+  }
 
   var body: some View {
     VStack {
-      NavigationLink(destination: ThirdView(), tag: .showThirdView, selection: $appState.secondViewNavigationState) {
-        EmptyView()
+      List(["1", "2", "3"].map { Cell(id: $0) }) { cell in
+        Button(action: {
+          appState.selectedId = cell.id
+        }) {
+          Text(cell.id)
+        }
       }
-      Text("Second View")
-      Button("Show third view") {
-        appState.secondViewNavigationState = .showThirdView
+      if let selectedId = appState.selectedId {
+        NavigationLink(destination: ThirdView(selectedId), isActive: .constant(true)) {
+          EmptyView()
+        }
       }
     }
     .navigationBarTitle("Second View", displayMode: .inline)
+    .noLabelBackButton()
+    .onAppear {
+      appState.selectedId = nil
+    }
+  }
+}
+
+struct NoLabelBackButtonViewModifier: ViewModifier {
+
+  @Environment(\.presentationMode) var presentation
+
+  func body(content: Content) -> some View {
+    content
+      .navigationBarBackButtonHidden(true)
+      .navigationBarItems(leading: Button(action: { presentation.wrappedValue.dismiss() }) {
+        Image(systemName: "chevron.left")
+          .foregroundColor(.blue)
+          .imageScale(.large)
+      })
+  }
+
+}
+
+extension View {
+  func noLabelBackButton() -> some View {
+    modifier(NoLabelBackButtonViewModifier())
   }
 }
 
@@ -118,8 +149,15 @@ extension SecondView {
 }
 
 struct ThirdView: View {
+
+  private let id: String
+
+  init(_ id: String) {
+    self.id = id
+  }
+
   var body: some View {
-    Text("Third View")
+    Text("Third View id: \(id)")
       .navigationBarTitle("Third View", displayMode: .inline)
   }
 }
@@ -143,7 +181,7 @@ struct FourthView: View {
 class AppState: ObservableObject {
   @Published var selectedSite: String? = nil
   @Published var selectedZone: String? = nil
-  @Published var selectedA: String? = nil
+  @Published var selectedId: String? = nil
   @Published var selectedTab: Tab = .firstTab
   @Published var firstViewNavigationState: FirstView.NavigationState?
   @Published var secondViewNavigationState: SecondView.NavigationState?
